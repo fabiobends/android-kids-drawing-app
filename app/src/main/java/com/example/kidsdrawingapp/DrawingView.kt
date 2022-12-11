@@ -20,6 +20,7 @@ private val initialCoordinates = object {
 
 class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) {
   private var drawingPath: DrawingPath? = null
+  private var drawingPaths = ArrayList<DrawingPath>()
   private var drawingPaint: Paint? = null
   private var canvasBitmap: Bitmap? = null
   private var canvasPaint: Paint? = null
@@ -76,7 +77,8 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
     canvas?.let {
       canvasBitmap?.let { bitmap ->
         val canvasWithBitmap = drawBitmapToCanvas(bitmap, it)
-        drawPathAndPaintWithBitmapToCanvas(canvasWithBitmap)
+        val canvasWithPaths = appendPathsToCanvas(canvasWithBitmap)
+        drawPathAndPaintWithBitmapToCanvas(canvasWithPaths)
       }
     }
   }
@@ -86,13 +88,29 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
     return canvas
   }
 
+  private fun appendPathsToCanvas(canvas: Canvas): Canvas {
+    var updatedCanvas = canvas
+    for (path in drawingPaths) {
+      updatedCanvas = checkDrawingPathAndDrawPathToCanvas(path, canvas)
+    }
+    return updatedCanvas
+  }
+
+  private fun checkDrawingPathAndDrawPathToCanvas(
+    drawingPath: DrawingPath,
+    canvas: Canvas
+  ): Canvas {
+    drawingPaint?.let { paint ->
+      paint.strokeWidth = drawingPath.brushThickness
+      paint.color = drawingPath.color
+      canvas.drawPath(drawingPath, paint)
+    }
+    return canvas
+  }
+
   private fun drawPathAndPaintWithBitmapToCanvas(canvas: Canvas) {
     drawingPath?.let { path ->
-      drawingPaint?.let { paint ->
-        paint.strokeWidth = path.brushThickness
-        paint.color = path.color
-        canvas.drawPath(path, paint)
-      }
+      checkDrawingPathAndDrawPathToCanvas(path, canvas)
     }
   }
 
@@ -112,7 +130,7 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
           onActionMove(xPosition, yPosition)
         }
         MotionEvent.ACTION_UP -> {
-          setUpDrawingPath()
+          onActionUp()
         }
         else -> return false
       }
@@ -137,6 +155,14 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
   ) {
     drawingPath?.lineTo(xPosition, yPosition)
   }
+
+  private fun onActionUp() {
+    drawingPath?.let {
+      drawingPaths.add(it)
+    }
+    setUpDrawingPath()
+  }
+
 
   internal inner class DrawingPath(var color: Int, var brushThickness: Float) : Path()
 }
