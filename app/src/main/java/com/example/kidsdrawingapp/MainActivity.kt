@@ -3,10 +3,13 @@ package com.example.kidsdrawingapp
 import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,21 +24,32 @@ class MainActivity : AppCompatActivity() {
   private var brushSizeButtons = ArrayList<ImageButton>()
   private var currentPaintButton: ImageButton? = null
 
-  private val requestPermission: ActivityResultLauncher<Array<String>> =
-    permissionResultLauncher()
+  private val requestPermissionLauncher: ActivityResultLauncher<Array<String>> =
+    requestStoragePermissionResultLauncher()
+  private val openGalleryLauncher: ActivityResultLauncher<Intent> =
+    openGalleryResultLauncher()
 
-  private fun permissionResultLauncher() =
+  private fun requestStoragePermissionResultLauncher() =
     registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permission ->
       permission.entries.forEach {
         val permissionName = it.key
         val isGranted = it.value
         if (isGranted) {
-          displayToast("Permission granted now you can read the storage files.")
+          onGrantedPermission()
         } else {
           checkPermissionAndDisplayDeniedToast(permissionName)
         }
       }
     }
+
+  private fun onGrantedPermission() {
+    displayToast("Permission granted now you can read the storage files.")
+    val pickIntent = Intent(
+      Intent.ACTION_PICK,
+      MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    )
+    openGalleryLauncher.launch(pickIntent)
+  }
 
   private fun displayToast(text: String) {
     Toast.makeText(
@@ -44,6 +58,14 @@ class MainActivity : AppCompatActivity() {
       Toast.LENGTH_LONG
     ).show()
   }
+
+  private fun openGalleryResultLauncher() =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+      if (it.resultCode == RESULT_OK && it.data != null) {
+        val imageBackground: ImageView = findViewById(R.id.image_background)
+        imageBackground.setImageURI(it.data?.data)
+      }
+    }
 
   private fun checkPermissionAndDisplayDeniedToast(permissionName: String) {
     if (permissionName == Manifest.permission.READ_EXTERNAL_STORAGE) {
@@ -117,7 +139,7 @@ class MainActivity : AppCompatActivity() {
     ) {
       showRationaleDialog("Kids Drawing App", "The app needs to access your external storage")
     } else {
-      requestPermission.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+      requestPermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
     }
   }
 
