@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity() {
   private var drawingView: DrawingView? = null
   private var brushButton: ImageButton? = null
   private var galleryButton: ImageButton? = null
+  private var undoButton: ImageButton? = null
   private var brushDialog: Dialog? = null
   private var brushSizeButtons = ArrayList<ImageButton>()
   private var currentPaintButton: ImageButton? = null
@@ -79,12 +80,20 @@ class MainActivity : AppCompatActivity() {
     drawingView = findViewById(R.id.drawing_view)
     brushButton = findViewById(R.id.brush)
     galleryButton = findViewById(R.id.gallery)
+    undoButton = findViewById(R.id.undo)
     brushButton?.setOnClickListener {
       showBrushSizeChooserDialog()
     }
     galleryButton?.setOnClickListener {
       requestStoragePermission()
     }
+    undoButton?.setOnClickListener {
+      onClickUndo()
+    }
+  }
+
+  private fun onClickUndo() {
+    drawingView?.undoLastDrawing()
   }
 
   private fun showBrushSizeChooserDialog() {

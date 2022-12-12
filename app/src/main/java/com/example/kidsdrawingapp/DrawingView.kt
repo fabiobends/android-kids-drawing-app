@@ -176,5 +176,12 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
     drawingPaint?.color = color
   }
 
+  fun undoLastDrawing() {
+    if (drawingPaths.size > 0) {
+      drawingPaths.removeLast()
+      invalidate()
+    }
+  }
+
   internal inner class DrawingPath(var color: Int, var brushThickness: Float) : Path()
 }
