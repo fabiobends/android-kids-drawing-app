@@ -3,13 +3,16 @@ package com.example.kidsdrawingapp
 import android.app.Dialog
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageButton
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
   private var drawingView: DrawingView? = null
   private var brushButton: ImageButton? = null
   private var brushDialog: Dialog? = null
   private var brushSizeButtons = ArrayList<ImageButton>()
+  private var currentPaintButton: ImageButton? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -63,5 +66,39 @@ class MainActivity : AppCompatActivity() {
         dialog.dismiss()
       }
     }
+  }
+
+  fun onPaintClick(view: View) {
+    if (view !== currentPaintButton) {
+      val selectedPaintButton = view as ImageButton
+      val selectedColor = selectedPaintButton.tag.toString()
+      updatePaintColor(selectedPaintButton, selectedColor)
+    }
+  }
+
+  private fun updatePaintColor(selectedPaintButton: ImageButton, color: String) {
+    drawingView?.setPaintColor(color)
+    val paintButton = setSelectedStyleToPaintButton(selectedPaintButton)
+    setRegularStyleToCurrentPaintButton()
+    currentPaintButton = paintButton
+  }
+
+  private fun setSelectedStyleToPaintButton(button: ImageButton): ImageButton {
+    button.setImageDrawable(
+      ContextCompat.getDrawable(
+        this,
+        R.drawable.pallet_selected
+      )
+    )
+    return button
+  }
+
+  private fun setRegularStyleToCurrentPaintButton() {
+    currentPaintButton?.setImageDrawable(
+      ContextCompat.getDrawable(
+        this,
+        R.drawable.pallet_regular
+      )
+    )
   }
 }
