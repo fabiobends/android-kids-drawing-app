@@ -4,10 +4,15 @@ import android.Manifest
 import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
@@ -15,12 +20,20 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : AppCompatActivity() {
   private var drawingView: DrawingView? = null
   private var brushButton: ImageButton? = null
   private var galleryButton: ImageButton? = null
   private var undoButton: ImageButton? = null
+  private var saveButton: ImageButton? = null
   private var brushDialog: Dialog? = null
   private var brushSizeButtons = ArrayList<ImageButton>()
   private var currentPaintButton: ImageButton? = null
@@ -77,10 +90,19 @@ class MainActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setContentView(R.layout.activity_main)
+    initializeElementsOnCreate()
+    handleButtonsOnCreate()
+  }
+
+  private fun initializeElementsOnCreate() {
     drawingView = findViewById(R.id.drawing_view)
     brushButton = findViewById(R.id.brush)
     galleryButton = findViewById(R.id.gallery)
     undoButton = findViewById(R.id.undo)
+    saveButton = findViewById(R.id.save)
+  }
+
+  private fun handleButtonsOnCreate() {
     brushButton?.setOnClickListener {
       showBrushSizeChooserDialog()
     }
@@ -90,10 +112,23 @@ class MainActivity : AppCompatActivity() {
     undoButton?.setOnClickListener {
       onClickUndo()
     }
+    saveButton?.setOnClickListener {
+      onClickSave()
+    }
   }
 
   private fun onClickUndo() {
     drawingView?.undoLastDrawing()
+  }
+
+  private fun onClickSave() {
+    if (isReadStorageAllowed()) {
+      lifecycleScope.launch {
+        val frameDrawingView: FrameLayout = findViewById(R.id.drawing_view_container)
+        val frameBitmap: Bitmap = getBitmapFromView(frameDrawingView)
+        saveBitmapFile(frameBitmap)
+      }
+    }
   }
 
   private fun showBrushSizeChooserDialog() {
@@ -140,6 +175,11 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
+  private fun isReadStorageAllowed(): Boolean {
+    val result = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+    return result == PackageManager.PERMISSION_GRANTED
+  }
+
   private fun requestStoragePermission() {
     if (ActivityCompat.shouldShowRequestPermissionRationale(
         this,
@@ -148,7 +188,12 @@ class MainActivity : AppCompatActivity() {
     ) {
       showRationaleDialog("Kids Drawing App", "The app needs to access your external storage")
     } else {
-      requestPermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+      requestPermissionLauncher.launch(
+        arrayOf(
+          Manifest.permission.READ_EXTERNAL_STORAGE,
+          Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+      )
     }
   }
 
@@ -194,5 +239,67 @@ class MainActivity : AppCompatActivity() {
         dialog.dismiss()
       }
     builder.create().show()
+  }
+
+  private fun getBitmapFromView(view: View): Bitmap {
+    val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val backgroundImage = view.background
+    if (backgroundImage != null) {
+      backgroundImage.draw(canvas)
+    } else {
+      canvas.drawColor(Color.WHITE)
+    }
+    view.draw(canvas)
+    return bitmap
+  }
+
+  private suspend fun saveBitmapFile(bitmap: Bitmap?): String {
+    var result = ""
+    withContext(Dispatchers.IO) {
+      bitmap?.let {
+        try {
+          result = createFileFromBitmapAndGetFilePath(it)
+          handleUiThreadOnSaveFile(result)
+        } catch (error: Exception) {
+          result = handleExceptionOnSaveFile(error)
+        }
+      }
+    }
+    return result
+  }
+
+  private fun createFileFromBitmapAndGetFilePath(bitmap: Bitmap): String {
+    val bytes = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 90, bytes)
+    val pathName = getPathName()
+    val file = File(pathName)
+    val fileOutput = FileOutputStream(file)
+    fileOutput.write(bytes.toByteArray())
+    fileOutput.close()
+    return file.absolutePath
+  }
+
+  private fun getPathName(): String {
+    return externalCacheDir?.absoluteFile.toString() +
+        File.separator +
+        "KidsDrawingApp_" +
+        System.currentTimeMillis() / 1000 +
+        ".png"
+  }
+
+  private fun handleUiThreadOnSaveFile(result: String) {
+    runOnUiThread {
+      if (result.isNotEmpty()) {
+        displayToast("File saved successfully: $result")
+      } else {
+        displayToast("Ops error while saving the file")
+      }
+    }
+  }
+
+  private fun handleExceptionOnSaveFile(error: Exception): String {
+    error.printStackTrace()
+    return ""
   }
 }
