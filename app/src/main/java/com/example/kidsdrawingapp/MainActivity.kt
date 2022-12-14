@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.media.MediaScannerConnection
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
@@ -306,9 +307,21 @@ class MainActivity : AppCompatActivity() {
       cancelProgressDialog()
       if (result.isNotEmpty()) {
         displayToast("File saved successfully: $result")
+        shareImage(result)
       } else {
         displayToast("Ops error while saving the file")
       }
+    }
+  }
+
+
+  private fun shareImage(pathName: String) {
+    MediaScannerConnection.scanFile(this, arrayOf(pathName), null) { _, uri ->
+      val shareIntent = Intent()
+      shareIntent.action = Intent.ACTION_SEND
+      shareIntent.putExtra(Intent.EXTRA_STREAM, uri)
+      shareIntent.type = "image/png"
+      startActivity(Intent.createChooser(shareIntent, "Share"))
     }
   }
 
