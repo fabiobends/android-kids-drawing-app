@@ -35,6 +35,7 @@ class MainActivity : AppCompatActivity() {
   private var undoButton: ImageButton? = null
   private var saveButton: ImageButton? = null
   private var brushDialog: Dialog? = null
+  private var customProgressDialog: Dialog? = null
   private var brushSizeButtons = ArrayList<ImageButton>()
   private var currentPaintButton: ImageButton? = null
 
@@ -123,12 +124,24 @@ class MainActivity : AppCompatActivity() {
 
   private fun onClickSave() {
     if (isReadStorageAllowed()) {
+      showProgressDialog()
       lifecycleScope.launch {
         val frameDrawingView: FrameLayout = findViewById(R.id.drawing_view_container)
         val frameBitmap: Bitmap = getBitmapFromView(frameDrawingView)
         saveBitmapFile(frameBitmap)
       }
     }
+  }
+
+  private fun showProgressDialog() {
+    customProgressDialog = Dialog(this)
+    customProgressDialog?.setContentView(R.layout.dialog_custom_progress)
+    customProgressDialog?.show()
+  }
+
+  private fun cancelProgressDialog() {
+    customProgressDialog?.dismiss()
+    customProgressDialog = null
   }
 
   private fun showBrushSizeChooserDialog() {
@@ -290,6 +303,7 @@ class MainActivity : AppCompatActivity() {
 
   private fun handleUiThreadOnSaveFile(result: String) {
     runOnUiThread {
+      cancelProgressDialog()
       if (result.isNotEmpty()) {
         displayToast("File saved successfully: $result")
       } else {
